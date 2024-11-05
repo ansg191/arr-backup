@@ -1,0 +1,16 @@
+[package]
+name = "arr-backup"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.92"
+http = "1.1.0"
+serde = { version = "1.0.214", features = ["derive"] }
+slog = "2.7.0"
+slog-async = "2.8.0"
+slog-envlogger = "2.2.0"
+slog-term = "2.9.1"
+time = { version = "0.3.36", features = ["parsing", "serde"] }
+ureq = { version = "3.0.0-rc2", features = ["platform-verifier"] }
+zip = "2.2.0"
