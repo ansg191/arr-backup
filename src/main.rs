@@ -1,7 +1,8 @@
-use std::{fs::File, time::Duration};
+use std::{fs::File, path::Path, time::Duration};
 
 use anyhow::{Context, Result};
-use slog::{debug, info, o, Drain, Logger};
+use slog::{crit, debug, info, o, Drain, Logger};
+use zip::result::ZipError;
 
 use crate::{
     client::{Backup, Client},
@@ -68,8 +69,45 @@ fn copy_backup(config: &Config, logger: Logger, backup: &Backup) -> Result<()> {
 
     let file = File::open(&backup_file).context("Failed to open backup file")?;
     let mut archive = zip::ZipArchive::new(file).context("Failed to read backup zip file")?;
-    archive
-        .extract(&config.dest_dir)
-        .context("Failed to extract backup")?;
+    // archive
+    //     .extract(&config.dest_dir)
+    //     .context("Failed to extract backup")?;
+    extract_archive(&logger, &mut archive, &config.dest_dir)?;
+    Ok(())
+}
+
+/// Extracts a zip archive to a directory.
+///
+/// Does not handle symlinks or permissions.
+fn extract_archive(
+    logger: &Logger,
+    archive: &mut zip::ZipArchive<File>,
+    directory: &Path,
+) -> Result<()> {
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let filepath = file
+            .enclosed_name()
+            .ok_or(ZipError::InvalidArchive("Invalid file path"))?;
+
+        let outpath = directory.join(filepath);
+        if file.is_dir() {
+            std::fs::create_dir_all(&outpath)?;
+            continue;
+        }
+        // Should be no symlinks
+        if outpath.is_symlink() {
+            crit!(
+                logger,
+                "symlink encountered";
+                "path" => outpath.to_str().unwrap(),
+            );
+            anyhow::bail!("symlink encountered");
+        }
+
+        let mut outfile = File::create(&outpath)?;
+        std::io::copy(&mut file, &mut outfile)?;
+    }
+
     Ok(())
 }
