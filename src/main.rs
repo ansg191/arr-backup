@@ -1,6 +1,6 @@
 use std::{fs::File, time::Duration};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use slog::{debug, info, o, Drain, Logger};
 
 use crate::{
@@ -66,8 +66,10 @@ fn copy_backup(config: &Config, logger: Logger, backup: &Backup) -> Result<()> {
     let backup_file = config.config_dir.join("Backups/manual").join(&backup.name);
     info!(logger, "Copying backup"; "src" => backup_file.to_str(), "dst" => config.dest_dir.to_str());
 
-    let file = File::open(&backup_file)?;
-    let mut archive = zip::ZipArchive::new(file)?;
-    archive.extract(&config.dest_dir)?;
+    let file = File::open(&backup_file).context("Failed to open backup file")?;
+    let mut archive = zip::ZipArchive::new(file).context("Failed to read backup zip file")?;
+    archive
+        .extract(&config.dest_dir)
+        .context("Failed to extract backup")?;
     Ok(())
 }
