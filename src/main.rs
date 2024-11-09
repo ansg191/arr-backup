@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path, time::Duration};
 
 use anyhow::{Context, Result};
-use slog::{crit, debug, info, o, Drain, Logger};
+use slog::{crit, debug, info, o, Drain, Logger, Never};
 use zip::result::ZipError;
 
 use crate::{
@@ -15,8 +15,13 @@ mod config;
 fn main() -> Result<()> {
     let config = Config::from_env()?;
 
-    let decorator = slog_term::TermDecorator::new().build();
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain: Box<dyn Drain<Ok = (), Err = Never> + Send> = if config.production {
+        Box::new(slog_json::Json::default(std::io::stderr()).fuse())
+    } else {
+        let decorator = slog_term::TermDecorator::new().build();
+        Box::new(slog_term::FullFormat::new(decorator).build().fuse())
+    };
+
     let drain = slog_envlogger::new(drain);
     let drain = slog_async::Async::new(drain).build().fuse();
     let log = Logger::root(drain, o!());
