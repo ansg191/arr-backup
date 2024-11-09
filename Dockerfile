@@ -11,11 +11,18 @@ RUN xx-info env && \
     apk add musl-dev clang lld && \
     xx-apk add musl-dev clang lld
 
+# Download and build deps
+RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    xx-cargo build --locked --release
+
 # Build the application.
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=cache,target=/app/target/ \
+#    --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
 xx-cargo build --locked --release && \
