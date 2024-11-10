@@ -1,7 +1,8 @@
 use std::{fs::File, path::Path, time::Duration};
 
 use anyhow::{Context, Result};
-use slog::{crit, debug, info, o, Drain, Logger, Never};
+use tracing::{debug, error, info};
+use tracing_subscriber::EnvFilter;
 use zip::result::ZipError;
 
 use crate::{
@@ -15,37 +16,38 @@ mod config;
 fn main() -> Result<()> {
     let config = Config::from_env()?;
 
-    let drain: Box<dyn Drain<Ok = (), Err = Never> + Send> = if config.production {
-        Box::new(slog_json::Json::default(std::io::stderr()).fuse())
+    if config.production {
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .json()
+            .init();
     } else {
-        let decorator = slog_term::TermDecorator::new().build();
-        Box::new(slog_term::FullFormat::new(decorator).build().fuse())
-    };
-
-    let drain = slog_envlogger::new(drain);
-    let drain = slog_async::Async::new(drain).build().fuse();
-    let log = Logger::root(drain, o!());
-
-    inner_main(config, log)
-}
-
-fn inner_main(config: Config, logger: Logger) -> Result<()> {
-    pre_checks(&config)?;
-
-    let client = Client::new(logger.clone(), &config.base_url, &config.api_key)?;
-
-    let backups = client.get_backup(Duration::from_secs(3600))?;
-    info!(logger, "Found backup"; "backup" => &backups.name, "id" => backups.id);
-
-    copy_backup(&config, logger.clone(), &backups)?;
-
-    if config.delete_backup {
-        client.delete_backup(backups.id)?;
-    } else {
-        debug!(logger, "Skipping backup deletion"; "id" => backups.id);
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .pretty()
+            .init();
     }
 
-    info!(logger, "Backup complete");
+    inner_main(config)
+}
+
+fn inner_main(config: Config) -> Result<()> {
+    pre_checks(&config)?;
+
+    let client = Client::new(&config.base_url, &config.api_key)?;
+
+    let backup = client.get_backup(Duration::from_secs(3600))?;
+    info!(backup.name, backup.id, "Found backup");
+
+    copy_backup(&config, &backup)?;
+
+    if config.delete_backup {
+        client.delete_backup(backup.id)?;
+    } else {
+        debug!(backup.id, "Skipping backup deletion");
+    }
+
+    info!("Backup complete");
 
     Ok(())
 }
@@ -68,27 +70,27 @@ fn pre_checks(config: &Config) -> Result<()> {
 }
 
 /// Gets backup zip file from config dir and unzips into dest dir.
-fn copy_backup(config: &Config, logger: Logger, backup: &Backup) -> Result<()> {
+fn copy_backup(config: &Config, backup: &Backup) -> Result<()> {
     let backup_file = config.config_dir.join("Backups/manual").join(&backup.name);
-    info!(logger, "Copying backup"; "src" => backup_file.to_str(), "dst" => config.dest_dir.to_str());
+    info!(
+        src = backup_file.to_str(),
+        dst = config.dest_dir.to_str(),
+        "Copying backup"
+    );
 
     let file = File::open(&backup_file).context("Failed to open backup file")?;
     let mut archive = zip::ZipArchive::new(file).context("Failed to read backup zip file")?;
     // archive
     //     .extract(&config.dest_dir)
     //     .context("Failed to extract backup")?;
-    extract_archive(&logger, &mut archive, &config.dest_dir)?;
+    extract_archive(&mut archive, &config.dest_dir)?;
     Ok(())
 }
 
 /// Extracts a zip archive to a directory.
 ///
 /// Does not handle symlinks or permissions.
-fn extract_archive(
-    logger: &Logger,
-    archive: &mut zip::ZipArchive<File>,
-    directory: &Path,
-) -> Result<()> {
+fn extract_archive(archive: &mut zip::ZipArchive<File>, directory: &Path) -> Result<()> {
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
         let filepath = file
@@ -102,11 +104,7 @@ fn extract_archive(
         }
         // Should be no symlinks
         if outpath.is_symlink() {
-            crit!(
-                logger,
-                "symlink encountered";
-                "path" => outpath.to_str().unwrap(),
-            );
+            error!(path = outpath.to_str().unwrap(), "symlink encountered");
             anyhow::bail!("symlink encountered");
         }
 
