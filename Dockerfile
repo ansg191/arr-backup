@@ -1,6 +1,6 @@
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0@sha256:0c6a569797744e45955f39d4f7538ac344bfb7ebf0a54006a0a4297b153ccf0f AS xx
 
-FROM --platform=$BUILDPLATFORM rust:1.82-alpine AS build
+FROM --platform=$BUILDPLATFORM rust:1.82-alpine@sha256:466dc9924d265455aa73e72fd9cdac9db69ce6a988e6f0e6baf852db3485d97d AS build
 
 COPY --from=xx / /
 ARG TARGETPLATFORM
@@ -30,7 +30,7 @@ xx-verify --static ./target/$(xx-cargo --print-target-triple)/release/arr-backup
 cp ./target/$(xx-cargo --print-target-triple)/release/arr-backup /bin/arr-backup
 
 ################################################################################
-FROM alpine:3.20.3 AS final
+FROM alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d AS final
 
 # Create a non-privileged user that the app will run under.
 ARG UID=10001
