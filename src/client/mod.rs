@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use http::{HeaderValue, Request, Response};
-use slog::{debug, info, o, Logger};
 use time::OffsetDateTime;
+use tracing::{debug, info};
 use ureq::{
     tls::{RootCerts, TlsConfig},
     Agent, AsSendBody, Body,
@@ -13,24 +13,17 @@ mod backup;
 pub use backup::{Backup, BackupType};
 
 pub struct Client {
-    logger: Logger,
     client: Agent,
     base_url: String,
     api_key: HeaderValue,
 }
 
 impl Client {
-    pub fn new(
-        logger: Logger,
-        base_url: impl Into<String>,
-        api_key: impl AsRef<str>,
-    ) -> Result<Self> {
+    pub fn new(base_url: impl Into<String>, api_key: impl AsRef<str>) -> Result<Self> {
         let base_url = base_url.into();
-        let logger = logger.new(o!("url" => base_url.clone()));
         let mut api_key = HeaderValue::from_str(api_key.as_ref())?;
         api_key.set_sensitive(true);
         Ok(Self {
-            logger,
             client: Agent::config_builder()
                 .user_agent(Some("arr-backup/0.1.0".to_owned()))
                 .tls_config(
@@ -57,7 +50,7 @@ impl Client {
     }
 
     pub fn get_backups(&self) -> Result<Vec<Backup>> {
-        debug!(self.logger, "Getting backups");
+        debug!(url = self.base_url, "Getting backups");
 
         let request = Request::get(format!("{}/api/v3/system/backup", self.base_url)).body(())?;
         let response = self.send_request(request)?;
@@ -74,7 +67,7 @@ impl Client {
     }
 
     pub fn trigger_backup(&self) -> Result<()> {
-        debug!(self.logger, "Triggering backup");
+        debug!(url = self.base_url, "Triggering backup");
 
         let request = Request::post(format!("{}/api/v3/command", self.base_url))
             .header("Content-Type", "application/json")
@@ -85,7 +78,7 @@ impl Client {
     }
 
     pub fn delete_backup(&self, id: u64) -> Result<()> {
-        debug!(self.logger, "Deleting backup"; "id" => id);
+        debug!(url = self.base_url, id, "Deleting backup");
 
         let request =
             Request::delete(format!("{}/api/v3/system/backup/{}", self.base_url, id)).body(())?;
@@ -100,20 +93,22 @@ impl Client {
         if let Some(backup) = backup {
             let age = backup.age();
             info!(
-                self.logger,
-                "Latest Backup Found";
-                "backup" => &backup.name,
-                "age" => age.as_seconds_f32(),
-                "id" => backup.id,
+                url = self.base_url,
+                backup.name,
+                backup.id,
+                backup.age = age.as_seconds_f32(),
+                "Latest Backup Found"
             );
             if backup.is_recent(max_age) {
                 return Ok(backup);
             } else {
-                info!(self.logger, "Backup is too old";
-                    "backup" => &backup.name,
-                    "id" => backup.id,
-                    "age" => age.as_seconds_f32(),
-                    "max_age" => max_age.as_secs_f32()
+                info!(
+                    url = self.base_url,
+                    backup.name,
+                    backup.id,
+                    backup.age = age.as_seconds_f32(),
+                    max_age = max_age.as_secs_f32(),
+                    "Backup is too old"
                 );
             }
         }
@@ -138,7 +133,7 @@ impl Client {
             }
 
             // Backup is not complete yet, wait a bit and try again
-            info!(self.logger, "Waiting for backup to complete");
+            info!(url = self.base_url, "Waiting for backup to complete");
             std::thread::sleep(Duration::from_secs(5));
         }
     }
