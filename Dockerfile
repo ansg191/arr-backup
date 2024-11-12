@@ -30,7 +30,7 @@ xx-verify --static ./target/$(xx-cargo --print-target-triple)/release/arr-backup
 cp ./target/$(xx-cargo --print-target-triple)/release/arr-backup /bin/arr-backup
 
 ################################################################################
-FROM alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d AS final
+FROM alpine:3.20.3@sha256:1e42bbe2508154c9126d48c2b8a75420c3544343bf86fd041fb7527e017a4b4a AS final
 
 # Create a non-privileged user that the app will run under.
 ARG UID=10001
