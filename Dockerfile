@@ -1,11 +1,13 @@
 ################################################################################
 # Create a stage for building the application.
 
-FROM rust:1.82.0-alpine AS build
+FROM --platform=$BUILDPLATFORM rust:1.82.0-alpine AS build
 WORKDIR /app
 
-# Install host build dependencies.
-RUN apk add --no-cache clang lld musl-dev git
+# Install deps
+RUN apk add --no-cache clang lld musl-dev git zig && \
+    cargo install --locked cargo-zigbuild && \
+    rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
@@ -21,11 +23,14 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-cargo build --locked --release && \
-cp ./target/release/arr-backup /bin/arr-backup
+    cargo zigbuild --release --target x86_64-unknown-linux-musl --target aarch64-unknown-linux-musl && \
+    mkdir /app/linux && \
+    cp target/aarch64-unknown-linux-musl/release/arr-backup /app/linux/arm64 && \
+    cp target/x86_64-unknown-linux-musl/release/arr-backup /app/linux/amd64
 
 ################################################################################
 FROM alpine:3.18 AS final
+ARG TARGETPLATFORM
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
@@ -41,7 +46,7 @@ RUN adduser \
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/arr-backup /bin/
 
-# What the container should run when it is started.
-CMD ["/bin/arr-backup"]
+COPY --from=build /app/${TARGETPLATFORM} /bin/arr-backup
+
+CMD [ "/bin/arr-backup" ]
