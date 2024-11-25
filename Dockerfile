@@ -1,10 +1,7 @@
-ARG APP_NAME=arr-backup
-
 ################################################################################
 # Create a stage for building the application.
 
 FROM rust:1.82.0-alpine AS build
-ARG APP_NAME
 WORKDIR /app
 
 # Install host build dependencies.
@@ -25,7 +22,7 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
 cargo build --locked --release && \
-cp ./target/release/$APP_NAME /bin/$APP_NAME
+cp ./target/release/arr-backup /bin/arr-backup
 
 ################################################################################
 FROM alpine:3.18 AS final
@@ -44,7 +41,7 @@ RUN adduser \
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/$APP_NAME /bin/
+COPY --from=build /bin/arr-backup /bin/
 
 # What the container should run when it is started.
-CMD ["/bin/$APP_NAME"]
+CMD ["/bin/arr-backup"]
