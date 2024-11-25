@@ -9,6 +9,8 @@ http = "1.1.0"
 serde = { version = "1.0.214", features = ["derive"] }
 time = { version = "0.3.36", features = ["parsing", "serde"] }
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
+tracing-forest = "0.1.6"
+tracing-panic = "0.1.2"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 ureq = { version = "3.0.0-rc2", features = ["platform-verifier"] }
 zip = "2.2.0"

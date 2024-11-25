@@ -1,8 +1,11 @@
-use std::{fs::File, path::Path, time::Duration};
+use std::{fs::File, path::Path, process::ExitCode, time::Duration};
 
 use anyhow::{Context, Result};
 use tracing::{debug, error, info};
-use tracing_subscriber::EnvFilter;
+use tracing_forest::ForestLayer;
+use tracing_subscriber::{
+    layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer, Registry,
+};
 use zip::result::ZipError;
 
 use crate::{
@@ -13,26 +16,30 @@ use crate::{
 mod client;
 mod config;
 
-fn main() -> Result<()> {
-    let config = Config::from_env()?;
+fn main() -> ExitCode {
+    Registry::default()
+        .with(ForestLayer::default().with_filter(EnvFilter::from_default_env()))
+        .init();
+    std::panic::set_hook(Box::new(tracing_panic::panic_hook));
 
-    if config.production {
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .json()
-            .init();
-    } else {
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .pretty()
-            .init();
+    let config = match Config::from_env() {
+        Ok(config) => config,
+        Err(e) => {
+            error!(err = %e, "Failed to load config");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if let Err(e) = inner_main(config) {
+        error!(err = %e, "Fatal Application error");
+        return ExitCode::FAILURE;
     }
 
-    inner_main(config)
+    ExitCode::SUCCESS
 }
 
 fn inner_main(config: Config) -> Result<()> {
-    pre_checks(&config)?;
+    pre_checks(&config.dest_dir, &config.config_dir)?;
 
     let client = Client::new(&config.base_url, &config.api_key)?;
 
@@ -52,17 +59,21 @@ fn inner_main(config: Config) -> Result<()> {
     Ok(())
 }
 
-fn pre_checks(config: &Config) -> Result<()> {
+#[tracing::instrument]
+fn pre_checks(dest_dir: &Path, config_dir: &Path) -> Result<()> {
     // Check destination directory exists
-    if !config.dest_dir.exists() {
+    if !dest_dir.exists() {
+        error!("Destination directory does not exist");
         anyhow::bail!("Destination directory does not exist");
     }
     // Check config directory exists
-    if !config.config_dir.exists() {
+    if !config_dir.exists() {
+        error!("Config directory does not exist");
         anyhow::bail!("Config directory does not exist");
     }
     // Check destination directory is empty
-    if config.dest_dir.read_dir()?.next().is_some() {
+    if dest_dir.read_dir()?.next().is_some() {
+        error!("Destination directory is not empty");
         anyhow::bail!("Destination directory is not empty");
     }
 
@@ -70,6 +81,7 @@ fn pre_checks(config: &Config) -> Result<()> {
 }
 
 /// Gets backup zip file from config dir and unzips into dest dir.
+#[tracing::instrument(skip(config))]
 fn copy_backup(config: &Config, backup: &Backup) -> Result<()> {
     let backup_file = config.config_dir.join("Backups/manual").join(&backup.name);
     info!(
@@ -90,6 +102,7 @@ fn copy_backup(config: &Config, backup: &Backup) -> Result<()> {
 /// Extracts a zip archive to a directory.
 ///
 /// Does not handle symlinks or permissions.
+#[tracing::instrument(skip(archive))]
 fn extract_archive(archive: &mut zip::ZipArchive<File>, directory: &Path) -> Result<()> {
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
