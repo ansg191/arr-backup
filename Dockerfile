@@ -1,38 +1,37 @@
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0@sha256:0c6a569797744e45955f39d4f7538ac344bfb7ebf0a54006a0a4297b153ccf0f AS xx
+ARG APP_NAME=arr-backup
 
-FROM --platform=$BUILDPLATFORM rust:1.82-alpine@sha256:2f42ce0d00c0b14f7fd84453cdc93ff5efec5da7ce03ead6e0b41adb1fbe834e AS build
+################################################################################
+# Create a stage for building the application.
 
-COPY --from=xx / /
-ARG TARGETPLATFORM
-
+FROM rust:1.82.0-alpine AS build
+ARG APP_NAME
 WORKDIR /app
 
-RUN xx-info env && \
-    apk add musl-dev clang lld && \
-    xx-apk add musl-dev clang lld
-
-# Download and build deps
-RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
-    xx-cargo build --locked --release
+# Install host build dependencies.
+RUN apk add --no-cache clang lld musl-dev git
 
 # Build the application.
+# Leverage a cache mount to /usr/local/cargo/registry/
+# for downloaded dependencies, a cache mount to /usr/local/cargo/git/db
+# for git repository dependencies, and a cache mount to /app/target/ for
+# compiled dependencies which will speed up subsequent builds.
+# Leverage a bind mount to the src directory to avoid having to copy the
+# source code into the container. Once built, copy the executable to an
+# output directory before the cache mounted /app/target is unmounted.
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-#    --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-xx-cargo build --locked --release && \
-xx-verify --static ./target/$(xx-cargo --print-target-triple)/release/arr-backup && \
-cp ./target/$(xx-cargo --print-target-triple)/release/arr-backup /bin/arr-backup
+cargo build --locked --release && \
+cp ./target/release/$APP_NAME /bin/$APP_NAME
 
 ################################################################################
-FROM alpine:3.20.3@sha256:1e42bbe2508154c9126d48c2b8a75420c3544343bf86fd041fb7527e017a4b4a AS final
+FROM alpine:3.18 AS final
 
 # Create a non-privileged user that the app will run under.
+# See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
 RUN adduser \
     --disabled-password \
@@ -45,7 +44,7 @@ RUN adduser \
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/arr-backup /bin/
+COPY --from=build /bin/$APP_NAME /bin/
 
 # What the container should run when it is started.
-CMD ["/bin/arr-backup"]
+CMD ["/bin/$APP_NAME"]
