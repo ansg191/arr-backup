@@ -1,6 +1,8 @@
 image: alpine/edge
 sources:
   - https://git.sr.ht/~ansg191/arr-backup
+secrets:
+  - 18737983-97b1-4f59-a4b4-ace65acf0a3d
 packages:
   - podman
 tasks:
@@ -9,6 +11,9 @@ tasks:
       sleep 1
   - build: |
       cd arr-backup
-      sudo --preserve-env podman manifest create arr-backup:latest
-      sudo --preserve-env podman build --platform linux/amd64,linux/arm64 --manifest arr-backup:latest -f Dockerfile .
+      cat ~/.dockerhub | sudo --preserve-env podman login docker.io -u ansg191 --password-stdin
+      sudo --preserve-env podman manifest create docker.io/ansg191/arr-backup:latest
+      sudo --preserve-env podman build --platform linux/amd64,linux/arm64 --layers --cache-to docker.io/ansg191/arr-backup-cache --cache-from docker.io/ansg191/arr-backup-cache --manifest docker.io/ansg191/arr-backup:latest -f Dockerfile .
+      sudo --preserve-env podman manifest push docker.io/ansg191/arr-backup:latest
+      sudo --preserve-env podman logout docker.io
 
