@@ -1,7 +1,7 @@
 ################################################################################
 # Create a stage for building the application.
 
-FROM --platform=$BUILDPLATFORM rust:1.82.0-alpine AS build
+FROM --platform=$BUILDPLATFORM rust:1.82.0-alpine@sha256:2f42ce0d00c0b14f7fd84453cdc93ff5efec5da7ce03ead6e0b41adb1fbe834e AS build
 WORKDIR /app
 
 # Install deps
@@ -29,7 +29,7 @@ RUN --mount=type=bind,source=src,target=src \
     cp target/x86_64-unknown-linux-musl/release/arr-backup /app/linux/amd64
 
 ################################################################################
-FROM alpine:3.18 AS final
+FROM alpine:3.18@sha256:2995c82e8e723d9a5c8585cb8e901d1c50e3c2759031027d3bff577449435157 AS final
 ARG TARGETPLATFORM
 
 # Create a non-privileged user that the app will run under.
