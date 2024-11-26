@@ -1,0 +1,14 @@
+image: alpine/edge
+sources:
+  - https://git.sr.ht/~ansg191/arr-backup
+packages:
+  - podman
+tasks:
+  - setup: |
+      sudo rc-service cgroups start
+      sleep 1
+  - build: |
+      cd arr-backup
+      sudo --preserve-env podman manifest create arr-backup:latest
+      sudo --preserve-env podman build --platform linux/amd64,linux/arm64 --manifest arr-backup:latest -f Dockerfile .
+
