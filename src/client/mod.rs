@@ -1,10 +1,11 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use http::{HeaderValue, Request, Response};
 use time::OffsetDateTime;
 use tracing::{debug, error, info};
 use ureq::{
+    config::AutoHeaderValue,
     tls::{RootCerts, TlsConfig},
     Agent, AsSendBody, Body,
 };
@@ -25,7 +26,9 @@ impl Client {
         api_key.set_sensitive(true);
         Ok(Self {
             client: Agent::config_builder()
-                .user_agent(Some("arr-backup/0.1.0".to_owned()))
+                .user_agent(AutoHeaderValue::Provided(Arc::new(
+                    "arr-backup/0.1.0".to_owned(),
+                )))
                 .tls_config(
                     TlsConfig::builder()
                         .root_certs(RootCerts::PlatformVerifier)
