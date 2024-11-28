@@ -1,0 +1,24 @@
+image: alpine/edge
+sources:
+  - https://git.sr.ht/~ansg191/arr-backup
+environment:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-D warnings'
+tasks:
+  - setup: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      . "$HOME/.cargo/env"
+      rustup toolchain install stable
+      rustup toolchain install nightly
+  - build: |
+      . "$HOME/.cargo/env"
+      cd arr-backup
+      cargo +stable build
+  - fmt: |
+      . "$HOME/.cargo/env"
+      cd arr-backup
+      cargo +nightly fmt --all -- --check
+  - clippy: |
+      . "$HOME/.cargo/env"
+      cd arr-backup
+      cargo +stable clippy --all-targets
