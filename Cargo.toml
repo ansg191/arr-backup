@@ -1,8 +1,10 @@
 [package]
 name = "arr-backup"
+description = "Executable to download backups from *arr apps"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+publish = ["anshulg"]
 
 [dependencies]
 anyhow = "1.0.92"
