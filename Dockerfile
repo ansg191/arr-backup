@@ -1,7 +1,7 @@
 ################################################################################
 # Create a stage for building the application.
 
-FROM --platform=$BUILDPLATFORM rust:1.83.0-alpine@sha256:838d384a1138fe1f2e448e3901bb3d23683570ba3dca581160880ffad760332b AS build
+FROM --platform=$BUILDPLATFORM rust:1.83.0-alpine@sha256:9ab8f4eab808b1383c7e60a15fbf291e949fec85c3f98c34fb145b16c4ced0a1 AS build
 WORKDIR /app
 
 # Install deps
