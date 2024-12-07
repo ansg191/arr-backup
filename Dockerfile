@@ -29,7 +29,7 @@ RUN --mount=type=bind,source=src,target=src \
     cp target/x86_64-unknown-linux-musl/release/arr-backup /app/linux/amd64
 
 ################################################################################
-FROM alpine:3.20@sha256:1e42bbe2508154c9126d48c2b8a75420c3544343bf86fd041fb7527e017a4b4a AS final
+FROM alpine:3.21@sha256:21dc6063fd678b478f57c0e13f47560d0ea4eeba26dfc947b2a4f81f686b9f45 AS final
 ARG TARGETPLATFORM
 
 # Create a non-privileged user that the app will run under.
