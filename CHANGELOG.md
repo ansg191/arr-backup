@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/ansg191/arr-backup/compare/v0.1.2...v0.1.3) - 2024-12-07
+
+### Other
+
+- Merge pull request [#33](https://github.com/ansg191/arr-backup/pull/33) from ansg191/renovate/rust-1.83.0-alpine
+- *(deps)* update alpine docker tag to v3.21
+
 ## [0.1.2](https://github.com/ansg191/arr-backup/compare/v0.1.1...v0.1.2) - 2024-12-03
 
 ### Other
