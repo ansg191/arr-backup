@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9](https://github.com/ansg191-lab/arr-backup/compare/v0.1.8...v0.1.9) - 2025-04-26
+
+### Fixed
+
+- *(deps)* update rust crate ureq to v3.0.11
+- *(deps)* update rust crate time to v0.3.41
+- *(deps)* update rust crate zip to v2.4.2
+- *(deps)* update rust crate ureq to v3.0.9
+- *(deps)* update rust crate http to v1.3.1
+
+### Other
+
+- *(deps)* update dependency cargo-zigbuild to v0.20.0
+- Merge pull request #113 from ansg191-lab/renovate/anyhow-1.x-lockfile
+- *(deps)* update rust docker tag to v1.86.0
+- *(deps)* update actions/create-github-app-token action to v2
+- *(deps)* update actions/create-github-app-token action to v1.12.0
+- Merge pull request #101 from ansg191-lab/renovate/ureq-3.x-lockfile
+- Merge pull request #100 from ansg191-lab/renovate/crate-zip-vulnerability
+- *(deps)* update rust docker tag to v1.85.1
+- *(deps)* update docker/login-action digest to 74a5d14
+
 ## [0.1.8](https://github.com/ansg191-lab/arr-backup/compare/v0.1.7...v0.1.8) - 2025-03-04
 
 ### Fixed
